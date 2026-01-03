@@ -1,0 +1,17 @@
+name: gitmoji
+description: gitmoji.
+version: 0.0.1
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  # https://pub.dev/packages/http
+  http: 1.6.0
+
+  # https://pub.dev/packages/path
+  path: 1.9.1
+
+dev_dependencies:
+  # https://pub.dev/packages/lints
+  lints: ^6.0.0
