@@ -16,6 +16,7 @@ void main(List<String> arguments) async {
       '${Ansi.bold}${Ansi.color(r: 255, g: 215)}?${Ansi.reset}';
   final okSign = '${Ansi.bold}${Ansi.green}*${Ansi.reset}';
   final gitmojiQuestion = 'Choose a gitmoji:';
+  final titleQuestion = 'Inform commit title:';
 
   var selected = 0;
   var search = StringBuffer();
@@ -126,7 +127,22 @@ void main(List<String> arguments) async {
   stdin.lineMode = oldLineMode;
   stdin.echoMode = oldEchoMode;
 
-  io.exit(0);
+  out.write('$questionSign $titleQuestion ');
+
+  final title = stdin.readLineSync();
+
+  final parameters = ['commit', '-a', '-m', '${selectedGitMoji.emoji} $title'];
+
+  final process = io.Process.runSync('git', parameters);
+
+  final exitCode = process.exitCode;
+
+  if (exitCode != 0) {
+    io.stderr.writeln(parameters.join(' '));
+    io.stderr.write(process.stderr);
+  }
+
+  io.exit(exitCode);
 }
 
 Future<List<GitMoji>> _fetchGitMojis() async {
