@@ -7,13 +7,20 @@ class Ansi {
   static const String csi = '$esc[';
 
   /// Control Sequence Introducer commands
-  static String cursorUp([int n = 1]) => '$csi${n}A';
+  static String cursorUp([int n = 1]) => n < 1 ? '' : '$csi${n}A';
 
-  static String cursorDown([int n = 1]) => '$csi${n}B';
+  static String cursorDown([int n = 1]) => n < 1 ? '' : '$csi${n}B';
 
-  static String cursorForward([int n = 1]) => '$csi${n}C';
+  static String cursorForward([int n = 1]) => n < 1 ? '' : '$csi${n}C';
 
-  static String cursorBack([int n = 1]) => '$csi${n}D';
+  static String cursorBack([int n = 1]) => n < 1 ? '' : '$csi${n}D';
+
+  static String cursorPosition({int row = 1, int col = 1}) =>
+      row < 1 || col < 1 ? '' : '$csi$row;${col}H';
+
+  static String cursorSavePosition = '${csi}s';
+
+  static String cursorRestorePosition = '${csi}u';
 
   static const String clearDisplayDown = '${csi}0J';
   static const String clearDisplayUp = '${csi}1J';

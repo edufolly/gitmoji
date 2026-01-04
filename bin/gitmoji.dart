@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io' as io;
-import 'dart:math' as math;
 import 'package:gitmoji/ansi.dart';
 import 'package:gitmoji/gitmoji.dart';
 import 'package:http/http.dart' as http;
@@ -13,21 +12,25 @@ void main(List<String> arguments) async {
   final emptyMarker = ''.padRight(marker.length);
   final oldLineMode = stdin.lineMode;
   final oldEchoMode = stdin.echoMode;
-  final gitmojiQuestion =
-      '${Ansi.bold}${Ansi.color(r: 255, g: 215)}?${Ansi.reset} '
-      'Choose a gitmoji:';
+  final questionSign =
+      '${Ansi.bold}${Ansi.color(r: 255, g: 215)}?${Ansi.reset}';
+  final okSign = '${Ansi.bold}${Ansi.green}*${Ansi.reset}';
+  final gitmojiQuestion = 'Choose a gitmoji:';
 
   var selected = 0;
   var search = StringBuffer();
 
   final List<GitMoji> allGitMojis = await _fetchGitMojis();
 
+  late GitMoji selectedGitMoji;
+
   stdin.lineMode = false;
   stdin.echoMode = false;
 
-  out.writeln(gitmojiQuestion);
-
   while (true) {
+    out.write('$questionSign $gitmojiQuestion $search');
+    out.writeln(Ansi.cursorSavePosition);
+
     final term = search.toString().toLowerCase();
 
     var emojis = term.isEmpty
@@ -43,21 +46,16 @@ void main(List<String> arguments) async {
       ),
     );
 
-    out.write('Search: $search');
+    out.write(Ansi.cursorRestorePosition);
 
     final byte = stdin.readByteSync();
 
-    final lines = math.min(emojis.length, lineCount);
-
-    /// Clear interface.
-    out.write(
-      Ansi.carriageReturn + Ansi.cursorUp(lines) + Ansi.clearDisplayDown,
-    );
+    out.write(Ansi.carriageReturn + Ansi.clearDisplayDown);
 
     /// Enter
     if (byte == 10) {
-      out.write(Ansi.cursorUp() + Ansi.clearEntireLine);
-      out.writeln('$gitmojiQuestion ${emojis[selected]}');
+      selectedGitMoji = emojis[selected];
+      out.writeln('$okSign $gitmojiQuestion $selectedGitMoji');
       break;
     }
 
@@ -139,11 +137,14 @@ Future<List<GitMoji>> _fetchGitMojis() async {
 
   if (cacheFile.existsSync() &&
       cacheFile.lastModifiedSync().isAfter(cacheExpire)) {
+    print('Cache hit!');
     jsonString = cacheFile.readAsStringSync();
   } else {
+    print('Getting definition...');
     jsonString = await _fetchFromWeb();
 
     if (jsonString.isEmpty && cacheFile.existsSync()) {
+      print('Using old cache.');
       jsonString = cacheFile.readAsStringSync();
     }
   }
