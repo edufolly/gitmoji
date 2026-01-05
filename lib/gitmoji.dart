@@ -1,4 +1,4 @@
-class GitMoji {
+class Gitmoji {
   final String emoji;
   final String entity;
   final String code;
@@ -7,7 +7,7 @@ class GitMoji {
   final String? semver;
   final String key;
 
-  GitMoji({
+  Gitmoji({
     required this.emoji,
     required this.entity,
     required this.code,
