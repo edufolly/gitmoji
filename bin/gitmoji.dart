@@ -1,135 +1,211 @@
 import 'dart:convert';
 import 'dart:io' as io;
-import 'dart:math';
+import 'package:gitmoji/ansi.dart';
+import 'package:gitmoji/gitmoji.dart';
 import 'package:http/http.dart' as http;
-
-class GitMoji {
-  final String emoji;
-  final String entity;
-  final String code;
-  final String description;
-  final String name;
-  final String? semver;
-
-  GitMoji({
-    required this.emoji,
-    required this.entity,
-    required this.code,
-    required this.description,
-    required this.name,
-    required this.semver,
-  });
-
-  @override
-  String toString() => '$emoji  $description';
-}
 
 void main(List<String> arguments) async {
   final out = io.stdout;
   final stdin = io.stdin;
-  final columns = out.terminalColumns;
   final lineCount = 5;
-  final marker = '=>';
+  final marker = '»';
   final emptyMarker = ''.padRight(marker.length);
+  final oldLineMode = stdin.lineMode;
+  final oldEchoMode = stdin.echoMode;
+  final questionSign =
+      '${Ansi.bold}${Ansi.color(r: 255, g: 215)}?${Ansi.reset}';
+  final okSign = '${Ansi.bold}${Ansi.green}*${Ansi.reset}';
+  final gitmojiQuestion = 'Choose a gitmoji:';
+  final titleQuestion = 'Inform commit title:';
+
   var selected = 0;
   var search = StringBuffer();
 
-  final response = await http.get(
-    Uri.parse(
-      'https://raw.githubusercontent.com/carloscuesta/gitmoji/refs/heads/master/packages/gitmojis/src/gitmojis.json',
-    ),
-  );
+  final List<GitMoji> allGitMojis = await _fetchGitMojis();
 
-  final body = jsonDecode(response.body);
-
-  out.writeln('Status: ${response.statusCode}');
-
-  final List<dynamic> list = body['gitmojis'];
-
-  final List<GitMoji> gitmojis = list.map((item) {
-    final map = item as Map<String, dynamic>;
-    return GitMoji(
-      emoji: map['emoji'].toString(),
-      entity: map['entity'].toString(),
-      code: map['code'].toString(),
-      description: map['description'].toString(),
-      name: map['name'].toString(),
-      semver: map['semver']?.toString(),
-    );
-  }).toList();
-
-  out.writeln('GitMojis: ${gitmojis.length}');
-
-  out.writeln('Columns: ${out.terminalColumns}');
+  late GitMoji selectedGitMoji;
 
   stdin.lineMode = false;
   stdin.echoMode = false;
 
   while (true) {
+    out.write('$questionSign $gitmojiQuestion $search');
+    out.writeln(Ansi.cursorSavePosition);
+
     final term = search.toString().toLowerCase();
 
-    final emojis = List.of(gitmojis).where((gitmoji) {
-      if (term.isEmpty) return true;
-      return gitmoji.description.toLowerCase().contains(term);
-    }).toList();
+    var emojis = term.isEmpty
+        ? List.of(allGitMojis)
+        : allGitMojis.where((gitmoji) => gitmoji.key.contains(term)).toList();
 
-    for (int i in _createWindow(selected, lineCount, emojis.length)) {
-      final gitmoji = emojis[i];
+    if (emojis.isEmpty) emojis = List.of(allGitMojis);
 
-      if (i == selected) {
-        out.write(marker);
-      } else {
-        out.write(emptyMarker);
-      }
+    _movementWindow(selected, lineCount, emojis.length).forEach(
+      (i) => out.writeln(
+        '${i == selected ? Ansi.green + marker + Ansi.reset : emptyMarker} '
+        '${emojis[i]}',
+      ),
+    );
 
-      out.writeln(' $gitmoji'.padRight(columns - marker.length));
-    }
-
-    out.write('Search: $search');
+    out.write(Ansi.cursorRestorePosition);
 
     final byte = stdin.readByteSync();
 
+    out.write(Ansi.carriageReturn + Ansi.clearDisplayDown);
+
+    /// Enter
     if (byte == 10) {
-      out.writeln('\n${emojis[selected]}'.padRight(columns));
+      selectedGitMoji = emojis[selected];
+      out.writeln('$okSign $gitmojiQuestion $selectedGitMoji');
       break;
     }
 
-    for (int i = 0; i < min(emojis.length, lineCount); i++) {
-      out.write('\r\x1b[K\x1b[1A'); // Clear lines.
-    }
-
+    /// Control Char ESC
     if (byte == 27) {
       if (stdin.readByteSync() != 91) continue;
 
       final newByte = stdin.readByteSync();
 
-      if (newByte == 66 && selected < emojis.length - 1) selected++;
+      switch (newByte) {
+        /// Page Up
+        case 53:
+          stdin.readByteSync();
+          // TODO: Implement
+          break;
 
-      if (newByte == 65 && selected > 0) selected--;
+        /// Page Down
+        case 54:
+          stdin.readByteSync();
+          // TODO: Implement
+          break;
+
+        /// Arrow Up
+        case 65:
+          if (selected > 0) selected--;
+          break;
+
+        /// Arrow Down
+        case 66:
+          if (selected < emojis.length - 1) selected++;
+          break;
+
+        /// End
+        case 70:
+          selected = emojis.length - 1;
+          break;
+
+        /// Home
+        case 72:
+          selected = 0;
+          break;
+
+        /// Default
+        default:
+          io.stderr.writeln('Control Char: $newByte');
+      }
 
       continue;
     }
 
+    selected = 0;
+
+    /// Backspace
     if (byte == 127) {
       final s = search.toString();
+
       if (s.isNotEmpty) {
         search.clear();
         search.write(s.substring(0, s.length - 1));
       }
+
       continue;
     }
-
-    /// 127 backspace
 
     search.writeCharCode(byte);
   }
 
-  out.writeln('Exit!'.padRight(columns));
+  stdin.lineMode = oldLineMode;
+  stdin.echoMode = oldEchoMode;
 
-  io.exit(0);
+  out.write('$questionSign $titleQuestion ');
+
+  final title = stdin.readLineSync();
+
+  final parameters = ['commit', '-a', '-m', '${selectedGitMoji.emoji} $title'];
+
+  final process = io.Process.runSync('git', parameters);
+
+  final exitCode = process.exitCode;
+
+  if (exitCode != 0) {
+    io.stderr.writeln(parameters.join(' '));
+    io.stderr.write(process.stderr);
+  }
+
+  io.exit(exitCode);
 }
 
-List<int> _createWindow(int selected, int lineCount, int max) {
+Future<List<GitMoji>> _fetchGitMojis() async {
+  final cacheFile = io.File('${io.Directory.systemTemp.path}/gitmoji.cache');
+  final cacheExpire = DateTime.now().subtract(Duration(days: 1));
+
+  String jsonString = '';
+
+  if (cacheFile.existsSync() &&
+      cacheFile.lastModifiedSync().isAfter(cacheExpire)) {
+    print('Cache hit!');
+    jsonString = cacheFile.readAsStringSync();
+  } else {
+    print('Getting definition...');
+    jsonString = await _fetchFromWeb();
+
+    if (jsonString.isEmpty && cacheFile.existsSync()) {
+      print('Using old cache.');
+      jsonString = cacheFile.readAsStringSync();
+    }
+  }
+
+  if (jsonString.trim().isEmpty) {
+    throw Exception('GitMojis definition not found.');
+  }
+
+  final body = jsonDecode(jsonString);
+
+  cacheFile.writeAsStringSync(jsonString);
+
+  final List<dynamic> list = body['gitmojis'];
+
+  return list.map((item) {
+    final map = item as Map<String, dynamic>;
+    return GitMoji(
+      emoji: map['emoji'].toString(),
+      entity: map['entity'].toString(),
+      code: map['code'].toString(),
+      description: map['description'].toString().trim(),
+      name: map['name'].toString(),
+      semver: map['semver']?.toString(),
+    );
+  }).toList();
+}
+
+Future<String> _fetchFromWeb() async {
+  try {
+    final response = await http.get(
+      Uri.parse(
+        'https://raw.githubusercontent.com/carloscuesta/gitmoji/refs/heads'
+        '/master/packages/gitmojis/src/gitmojis.json',
+      ),
+    );
+
+    if (response.statusCode < 200 || response.statusCode > 299) return '';
+
+    return response.body;
+  } on Exception {
+    return '';
+  }
+}
+
+List<int> _movementWindow(int selected, int lineCount, int max) {
   if (lineCount >= max) return List.generate(max, (i) => i);
 
   if (max - selected < lineCount) {
