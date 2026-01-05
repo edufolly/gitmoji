@@ -45,4 +45,14 @@ class Ansi {
   /// Colors - 24-bit - from 0 to 255
   static String color({int r = 0, int g = 0, int b = 0}) =>
       '${csi}38;2;$r;$g;${b}m';
+
+  static const String customYellow = '${csi}38;2;255;215;0m';
+
+  /// Utils
+  static final RegExp ansiRegex = RegExp(
+    r'[\x1B\x9B][\[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><GKFm]',
+    caseSensitive: false,
+  );
+
+  static String strip(String text) => text.replaceAll(ansiRegex, '');
 }
