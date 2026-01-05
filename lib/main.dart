@@ -15,6 +15,7 @@ class Main {
   final String okSign;
   final String gitmojiQuestion;
   final String titleQuestion;
+  final String bodyQuestion;
 
   var _index = 0;
   final search = StringBuffer();
@@ -26,6 +27,7 @@ class Main {
     this.marker = '${Ansi.bold}${Ansi.green}»${Ansi.reset}',
     this.gitmojiQuestion = 'Choose a Gitmoji:',
     this.titleQuestion = 'Inform commit title:',
+    this.bodyQuestion = 'Inform commit title:',
     this.questionSign = '${Ansi.bold}${Ansi.customYellow}?${Ansi.reset}',
     this.okSign = '${Ansi.bold}${Ansi.green}*${Ansi.reset}',
   }) : emptyMarker = ''.padRight(Ansi.strip(marker).length);
@@ -132,8 +134,18 @@ class Main {
       io.exit(10);
     }
 
+    /// Type
+    // TODO: Use commit type?
+
+    /// Body
+    stdout.write('$questionSign $bodyQuestion ');
+
+    final String? body = stdin.readLineSync()?.trim();
+
     /// Run git commit command.
     final parameters = ['commit', '-a', '-m', '${selected.emoji} $title'];
+
+    if (body?.isNotEmpty ?? false) parameters.addAll(['-m', '$body']);
 
     final process = io.Process.runSync('git', parameters);
 
