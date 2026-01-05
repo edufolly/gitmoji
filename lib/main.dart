@@ -27,7 +27,7 @@ class Main {
     this.marker = '${Ansi.bold}${Ansi.green}»${Ansi.reset}',
     this.gitmojiQuestion = 'Choose a Gitmoji:',
     this.titleQuestion = 'Inform commit title:',
-    this.bodyQuestion = 'Inform commit title:',
+    this.bodyQuestion = 'Inform commit body (optional):',
     this.questionSign = '${Ansi.bold}${Ansi.customYellow}?${Ansi.reset}',
     this.okSign = '${Ansi.bold}${Ansi.green}*${Ansi.reset}',
   }) : emptyMarker = ''.padRight(Ansi.strip(marker).length);
