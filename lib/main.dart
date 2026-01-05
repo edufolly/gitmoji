@@ -143,18 +143,7 @@ class Main {
     final String? body = stdin.readLineSync()?.trim();
 
     /// Run git commit command.
-    final parameters = ['commit', '-a', '-m', '${selected.emoji} $title'];
-
-    if (body?.isNotEmpty ?? false) parameters.addAll(['-m', '$body']);
-
-    final process = io.Process.runSync('git', parameters);
-
-    final exitCode = process.exitCode;
-
-    if (exitCode != 0) {
-      io.stderr.writeln(parameters.join(' '));
-      io.stderr.write(process.stderr);
-    }
+    final exitCode = _commit(selected, title!, body);
 
     io.exit(exitCode);
   }
@@ -185,5 +174,22 @@ class Main {
     }
 
     return List.generate(lineCount, (i) => selected + i);
+  }
+
+  int _commit(Gitmoji emoji, String title, String? body) {
+    final parameters = ['commit', '-a', '-m', '${selected.emoji} $title'];
+
+    if (body?.isNotEmpty ?? false) parameters.addAll(['-m', '$body']);
+
+    final process = io.Process.runSync('git', parameters);
+
+    final exitCode = process.exitCode;
+
+    if (exitCode != 0) {
+      io.stderr.writeln(parameters.join(' '));
+      io.stderr.write(process.stderr);
+    }
+
+    return exitCode;
   }
 }
