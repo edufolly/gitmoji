@@ -125,7 +125,12 @@ class Main {
     /// Title
     stdout.write('$questionSign $titleQuestion ');
 
-    final title = stdin.readLineSync();
+    final String? title = stdin.readLineSync()?.trim();
+
+    if (title?.isEmpty ?? true) {
+      io.stderr.writeln('[ERROR] Empty title!');
+      io.exit(10);
+    }
 
     /// Run git commit command.
     final parameters = ['commit', '-a', '-m', '${selected.emoji} $title'];
