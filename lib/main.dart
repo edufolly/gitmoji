@@ -16,6 +16,7 @@ class Main {
   final String gitmojiQuestion;
   final String titleQuestion;
   final String bodyQuestion;
+  final bool commitWithAdd;
 
   var _index = 0;
   final search = StringBuffer();
@@ -30,6 +31,7 @@ class Main {
     this.bodyQuestion = 'Inform commit body (optional):',
     this.questionSign = '${Ansi.bold}${Ansi.customYellow}?${Ansi.reset}',
     this.okSign = '${Ansi.bold}${Ansi.green}*${Ansi.reset}',
+    this.commitWithAdd = true,
   }) : emptyMarker = ''.padRight(Ansi.strip(marker).length);
 
   void run(final List<Gitmoji> gitmojiList) {
@@ -130,7 +132,7 @@ class Main {
     final String? title = stdin.readLineSync()?.trim();
 
     if (title?.isEmpty ?? true) {
-      io.stderr.writeln('[ERROR] Empty title!');
+      io.stderr.writeln('\n[ERROR] Empty title!');
       io.exit(10);
     }
 
@@ -149,15 +151,17 @@ class Main {
   }
 
   int _render(List<Gitmoji> emojis) {
+    stdout.writeln();
+
+    final List<int> lines = _movementWindow(_index, lineCount, emojis.length);
+
+    for (int i in lines) {
+      stdout.writeln('${i == _index ? marker : emptyMarker} ${emojis[i]}');
+    }
+
+    stdout.write(Ansi.carriageReturn + Ansi.cursorUp(lines.length + 1));
+
     stdout.write('$questionSign $gitmojiQuestion $search');
-    stdout.writeln(Ansi.cursorSavePosition);
-
-    _movementWindow(_index, lineCount, emojis.length).forEach(
-      (i) =>
-          stdout.writeln('${i == _index ? marker : emptyMarker} ${emojis[i]}'),
-    );
-
-    stdout.write(Ansi.cursorRestorePosition);
 
     final byte = stdin.readByteSync();
 
@@ -177,7 +181,12 @@ class Main {
   }
 
   int _commit(Gitmoji emoji, String title, String? body) {
-    final parameters = ['commit', '-a', '-m', '${selected.emoji} $title'];
+    final parameters = [
+      'commit',
+      if (commitWithAdd) '-a',
+      '-m',
+      '${selected.emoji} $title',
+    ];
 
     if (body?.isNotEmpty ?? false) parameters.addAll(['-m', '$body']);
 
