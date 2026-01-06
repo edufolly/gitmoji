@@ -6,8 +6,11 @@ import 'package:http/http.dart' as http;
 import 'gitmoji.dart';
 
 class GitmojiClient {
-  Future<List<Gitmoji>> fetch(
-    bool debug, {
+  final bool debug;
+
+  GitmojiClient(this.debug);
+
+  Future<List<Gitmoji>> fetch({
     String url =
         'https://raw.githubusercontent.com/carloscuesta/gitmoji/refs/heads'
         '/master/packages/gitmojis/src/gitmojis.json',
