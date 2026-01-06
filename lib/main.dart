@@ -17,11 +17,10 @@ class Main {
   final String titleQuestion;
   final String bodyQuestion;
   final bool commitWithAdd;
+  final bool commitWithEmoji;
 
   var _index = 0;
   final search = StringBuffer();
-
-  late Gitmoji selected;
 
   Main({
     this.lineCount = 5,
@@ -32,9 +31,12 @@ class Main {
     this.questionSign = '${Ansi.bold}${Ansi.customYellow}?${Ansi.reset}',
     this.okSign = '${Ansi.bold}${Ansi.green}*${Ansi.reset}',
     this.commitWithAdd = true,
+    this.commitWithEmoji = true,
   }) : emptyMarker = ''.padRight(Ansi.strip(marker).length);
 
   void run(final List<Gitmoji> gitmojiList) {
+    late Gitmoji selected;
+
     stdin.lineMode = false;
     stdin.echoMode = false;
 
@@ -150,10 +152,10 @@ class Main {
     io.exit(exitCode);
   }
 
-  int _render(List<Gitmoji> emojis) {
+  int _render(final List<Gitmoji> emojis) {
     stdout.writeln();
 
-    final List<int> lines = _movementWindow(_index, lineCount, emojis.length);
+    final List<int> lines = _window(_index, lineCount, emojis.length);
 
     for (int i in lines) {
       stdout.writeln('${i == _index ? marker : emptyMarker} ${emojis[i]}');
@@ -170,7 +172,7 @@ class Main {
     return byte;
   }
 
-  List<int> _movementWindow(int selected, int lineCount, int max) {
+  List<int> _window(final int selected, final int lineCount, final int max) {
     if (lineCount >= max) return List.generate(max, (i) => i);
 
     if (max - selected < lineCount) {
@@ -180,12 +182,12 @@ class Main {
     return List.generate(lineCount, (i) => selected + i);
   }
 
-  int _commit(Gitmoji emoji, String title, String? body) {
+  int _commit(final Gitmoji gitmoji, final String title, final String? body) {
     final parameters = [
       'commit',
       if (commitWithAdd) '-a',
       '-m',
-      '${selected.emoji} $title',
+      '${commitWithEmoji ? gitmoji.emoji : gitmoji.code} $title',
     ];
 
     if (body?.isNotEmpty ?? false) parameters.addAll(['-m', '$body']);
