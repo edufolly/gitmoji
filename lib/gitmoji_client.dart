@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io' as io;
 
+import 'package:gitmoji/nullable_string_extension.dart';
 import 'package:http/http.dart' as http;
 
 import 'gitmoji.dart';
@@ -38,7 +39,7 @@ class GitmojiClient {
       }
     }
 
-    if (jsonString.trim().isEmpty) {
+    if (jsonString.isNullOrBlank) {
       throw Exception('Gitmojis definition not found.');
     }
 

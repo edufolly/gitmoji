@@ -1,5 +1,7 @@
 import 'dart:io' as io;
 
+import 'package:gitmoji/nullable_string_extension.dart';
+
 import 'ansi.dart';
 import 'gitmoji.dart';
 
@@ -21,8 +23,6 @@ class Main {
   final bool commitWithAdd;
   final bool commitWithEmoji;
 
-  final search = StringBuffer();
-
   Main(
     this.debug, {
     this.lineCount = 5,
@@ -39,6 +39,7 @@ class Main {
 
   void run(final List<Gitmoji> gitmojiList) {
     late Gitmoji selected;
+    final search = StringBuffer();
     int index = 0;
 
     stdin.lineMode = false;
@@ -56,7 +57,7 @@ class Main {
           ? List.of(gitmojiList)
           : filtered;
 
-      final byte = _render(index, emojis);
+      final byte = _render(search, index, emojis);
 
       /// Enter
       if (byte == 10) {
@@ -134,7 +135,7 @@ class Main {
 
     /// Title
     // TODO: Count title length. Max 50 chars.
-    final max = 50 - (commitWithEmoji ? 3 : selected.code.length + 1);
+    // final max = 50 - (commitWithEmoji ? 3 : selected.code.length + 1);
 
     stdout.write('$questionSign $titleQuestion ');
 
@@ -155,7 +156,7 @@ class Main {
 
     final String? body = stdin.readLineSync()?.trim();
 
-    if (body?.isEmpty ?? true) {
+    if (body.isNullOrEmpty) {
       stdout.writeln(
         '${Ansi.cursorUp()}${Ansi.carriageReturn}${Ansi.clearEntireLine}'
         '$cancelSign $bodyQuestion ',
@@ -168,7 +169,11 @@ class Main {
     io.exit(exitCode);
   }
 
-  int _render(final int index, final List<Gitmoji> emojis) {
+  int _render(
+    final StringBuffer search,
+    final int index,
+    final List<Gitmoji> emojis,
+  ) {
     stdout.writeln();
 
     final List<int> lines = _window(index, lineCount, emojis.length);
