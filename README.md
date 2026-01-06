@@ -1,4 +1,4 @@
-# 🚀 gitmoji
+# 🚀 gitmoji 😄
 
 A tool inspired by **[gitmoji](https://gitmoji.dev/)** that helps you create
 standardized, emoji-based Git commits — **without installing any dependencies,
@@ -24,3 +24,9 @@ This project solves that by providing:
 ## 📦 Installation
 
 Just download the binary for your operating system and make it executable.
+
+```shell
+curl -sSLO https://github.com/edufolly/gitmoji/releases/latest/download/gitmoji
+chmod +x gitmoji
+sudo mv gitmoji /usr/local/bin
+```
