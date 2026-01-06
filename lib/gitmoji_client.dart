@@ -1,13 +1,17 @@
 import 'dart:convert';
 import 'dart:io' as io;
 
+import 'package:gitmoji/nullable_string_extension.dart';
 import 'package:http/http.dart' as http;
 
 import 'gitmoji.dart';
 
 class GitmojiClient {
-  Future<List<Gitmoji>> fetch(
-    bool debug, {
+  final bool debug;
+
+  GitmojiClient(this.debug);
+
+  Future<List<Gitmoji>> fetch({
     String url =
         'https://raw.githubusercontent.com/carloscuesta/gitmoji/refs/heads'
         '/master/packages/gitmojis/src/gitmojis.json',
@@ -25,33 +29,25 @@ class GitmojiClient {
       if (debug) print('Getting definition...');
       jsonString = await _fetchFromWeb(debug, url);
 
-      if (jsonString.isEmpty && cacheFile.existsSync()) {
-        print('Using old cache.');
-        jsonString = cacheFile.readAsStringSync();
+      if (jsonString.isNotEmpty) {
+        cacheFile.writeAsStringSync(jsonString);
+      } else {
+        if (cacheFile.existsSync()) {
+          if (debug) print('Using old cache.');
+          jsonString = cacheFile.readAsStringSync();
+        }
       }
     }
 
-    if (jsonString.trim().isEmpty) {
-      throw Exception('GitMojis definition not found.');
+    if (jsonString.isNullOrBlank) {
+      throw Exception('Gitmojis definition not found.');
     }
 
     final body = jsonDecode(jsonString);
 
-    cacheFile.writeAsStringSync(jsonString);
-
     final List<dynamic> list = body['gitmojis'];
 
-    return list.map((item) {
-      final map = item as Map<String, dynamic>;
-      return Gitmoji(
-        emoji: map['emoji'].toString(),
-        entity: map['entity'].toString(),
-        code: map['code'].toString(),
-        description: map['description'].toString().trim(),
-        name: map['name'].toString(),
-        semver: map['semver']?.toString(),
-      );
-    }).toList();
+    return list.map((item) => Gitmoji.fromJson(item)).toList();
   }
 
   Future<String> _fetchFromWeb(bool debug, String url) async {

@@ -18,10 +18,8 @@ class Ansi {
   static String cursorPosition({int row = 1, int col = 1}) =>
       row < 1 || col < 1 ? '' : '$csi$row;${col}H';
 
-  static String cursorSavePosition = '${csi}s';
-
-  static String cursorRestorePosition = '${csi}u';
-
+  static const String cursorSavePosition = '${csi}s';
+  static const String cursorRestorePosition = '${csi}u';
   static const String clearDisplayDown = '${csi}0J';
   static const String clearDisplayUp = '${csi}1J';
   static const String clearEntireLine = '${csi}2K';
@@ -32,6 +30,8 @@ class Ansi {
   static const String dim = '${csi}2m';
   static const String italic = '${csi}3m';
   static const String underline = '${csi}4m';
+  static const String slowBlink = '${csi}5m';
+  static const String fastBlink = '${csi}6m';
 
   /// Colors - 3-bit and 4-bit
   static const String red = '${csi}31m';

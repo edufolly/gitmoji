@@ -17,6 +17,7 @@ jobs:
       - name: Get Pubspec Version
         run: |
           VERSION=$(grep 'version:' pubspec.yaml | cut -c 10- | cut -f 1 -d '+')
+          sed -i "s/dev/$VERSION/g" bin/gitmoji.dart
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Check if version is used

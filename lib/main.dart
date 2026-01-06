@@ -1,9 +1,12 @@
 import 'dart:io' as io;
 
+import 'package:gitmoji/nullable_string_extension.dart';
+
 import 'ansi.dart';
 import 'gitmoji.dart';
 
 class Main {
+  final bool debug;
   final int lineCount;
   final String marker;
   final String emptyMarker;
@@ -13,16 +16,15 @@ class Main {
   final bool oldEchoMode = io.stdin.echoMode;
   final String questionSign;
   final String okSign;
+  final String cancelSign;
   final String gitmojiQuestion;
   final String titleQuestion;
   final String bodyQuestion;
+  final bool commitWithAdd;
+  final bool commitWithEmoji;
 
-  var _index = 0;
-  final search = StringBuffer();
-
-  late Gitmoji selected;
-
-  Main({
+  Main(
+    this.debug, {
     this.lineCount = 5,
     this.marker = '${Ansi.bold}${Ansi.green}»${Ansi.reset}',
     this.gitmojiQuestion = 'Choose a Gitmoji:',
@@ -30,9 +32,16 @@ class Main {
     this.bodyQuestion = 'Inform commit body (optional):',
     this.questionSign = '${Ansi.bold}${Ansi.customYellow}?${Ansi.reset}',
     this.okSign = '${Ansi.bold}${Ansi.green}*${Ansi.reset}',
+    this.cancelSign = '${Ansi.bold}${Ansi.red}X${Ansi.reset}',
+    this.commitWithAdd = true,
+    this.commitWithEmoji = true,
   }) : emptyMarker = ''.padRight(Ansi.strip(marker).length);
 
   void run(final List<Gitmoji> gitmojiList) {
+    late Gitmoji selected;
+    final search = StringBuffer();
+    int index = 0;
+
     stdin.lineMode = false;
     stdin.echoMode = false;
 
@@ -48,11 +57,11 @@ class Main {
           ? List.of(gitmojiList)
           : filtered;
 
-      final byte = _render(emojis);
+      final byte = _render(search, index, emojis);
 
       /// Enter
       if (byte == 10) {
-        selected = emojis[_index];
+        selected = emojis[index];
         stdout.writeln('$okSign $gitmojiQuestion $selected');
         break;
       }
@@ -78,22 +87,22 @@ class Main {
 
           /// Arrow Up
           case 65:
-            if (_index > 0) _index--;
+            if (index > 0) index--;
             break;
 
           /// Arrow Down
           case 66:
-            if (_index < emojis.length - 1) _index++;
+            if (index < emojis.length - 1) index++;
             break;
 
           /// End
           case 70:
-            _index = emojis.length - 1;
+            index = emojis.length - 1;
             break;
 
           /// Home
           case 72:
-            _index = 0;
+            index = 0;
             break;
 
           /// Default
@@ -104,7 +113,7 @@ class Main {
         continue;
       }
 
-      _index = 0;
+      index = 0;
 
       /// Backspace
       if (byte == 127) {
@@ -125,25 +134,82 @@ class Main {
     stdin.echoMode = oldEchoMode;
 
     /// Title
+    // TODO: Count title length. Max 50 chars.
+    // final max = 50 - (commitWithEmoji ? 3 : selected.code.length + 1);
+
     stdout.write('$questionSign $titleQuestion ');
 
     final String? title = stdin.readLineSync()?.trim();
 
     if (title?.isEmpty ?? true) {
+      stdout.writeln(
+        '${Ansi.cursorUp()}${Ansi.carriageReturn}${Ansi.clearEntireLine}'
+        '$cancelSign $titleQuestion ',
+      );
+
       io.stderr.writeln('[ERROR] Empty title!');
       io.exit(10);
     }
-
-    /// Type
-    // TODO: Use commit type?
 
     /// Body
     stdout.write('$questionSign $bodyQuestion ');
 
     final String? body = stdin.readLineSync()?.trim();
 
+    if (body.isNullOrEmpty) {
+      stdout.writeln(
+        '${Ansi.cursorUp()}${Ansi.carriageReturn}${Ansi.clearEntireLine}'
+        '$cancelSign $bodyQuestion ',
+      );
+    }
+
     /// Run git commit command.
-    final parameters = ['commit', '-a', '-m', '${selected.emoji} $title'];
+    final exitCode = _commit(selected, title!, body);
+
+    io.exit(exitCode);
+  }
+
+  int _render(
+    final StringBuffer search,
+    final int index,
+    final List<Gitmoji> emojis,
+  ) {
+    stdout.writeln();
+
+    final List<int> lines = _window(index, lineCount, emojis.length);
+
+    for (int i in lines) {
+      stdout.writeln('${i == index ? marker : emptyMarker} ${emojis[i]}');
+    }
+
+    stdout.write(Ansi.carriageReturn + Ansi.cursorUp(lines.length + 1));
+
+    stdout.write('$questionSign $gitmojiQuestion $search');
+
+    final byte = stdin.readByteSync();
+
+    stdout.write(Ansi.carriageReturn + Ansi.clearDisplayDown);
+
+    return byte;
+  }
+
+  List<int> _window(final int selected, final int lineCount, final int max) {
+    if (lineCount >= max) return List.generate(max, (i) => i);
+
+    if (max - selected < lineCount) {
+      return List.generate(lineCount, (i) => max - lineCount + i);
+    }
+
+    return List.generate(lineCount, (i) => selected + i);
+  }
+
+  int _commit(final Gitmoji gitmoji, final String title, final String? body) {
+    final parameters = [
+      'commit',
+      if (commitWithAdd) '-a',
+      '-m',
+      '${commitWithEmoji ? gitmoji.emoji : gitmoji.code} $title',
+    ];
 
     if (body?.isNotEmpty ?? false) parameters.addAll(['-m', '$body']);
 
@@ -156,34 +222,6 @@ class Main {
       io.stderr.write(process.stderr);
     }
 
-    io.exit(exitCode);
-  }
-
-  int _render(List<Gitmoji> emojis) {
-    stdout.write('$questionSign $gitmojiQuestion $search');
-    stdout.writeln(Ansi.cursorSavePosition);
-
-    _movementWindow(_index, lineCount, emojis.length).forEach(
-      (i) =>
-          stdout.writeln('${i == _index ? marker : emptyMarker} ${emojis[i]}'),
-    );
-
-    stdout.write(Ansi.cursorRestorePosition);
-
-    final byte = stdin.readByteSync();
-
-    stdout.write(Ansi.carriageReturn + Ansi.clearDisplayDown);
-
-    return byte;
-  }
-
-  List<int> _movementWindow(int selected, int lineCount, int max) {
-    if (lineCount >= max) return List.generate(max, (i) => i);
-
-    if (max - selected < lineCount) {
-      return List.generate(lineCount, (i) => max - lineCount + i);
-    }
-
-    return List.generate(lineCount, (i) => selected + i);
+    return exitCode;
   }
 }
