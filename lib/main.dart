@@ -130,18 +130,39 @@ class Main {
       search.writeCharCode(byte);
     }
 
-    stdin.lineMode = oldLineMode;
-    stdin.echoMode = oldEchoMode;
-
     /// Title
-    // TODO: Count title length. Max 50 chars.
-    // final max = 50 - (commitWithEmoji ? 3 : selected.code.length + 1);
+    final max = 50 - (commitWithEmoji ? 3 : selected.code.length + 1);
 
-    stdout.write('$questionSign $titleQuestion ');
+    final title = StringBuffer();
 
-    final String? title = stdin.readLineSync()?.trim();
+    while (true) {
+      stdout.write(
+        '$questionSign [${title.length}/$max] $titleQuestion $title',
+      );
 
-    if (title?.isEmpty ?? true) {
+      final byte = stdin.readByteSync();
+
+      stdout.write(Ansi.carriageReturn + Ansi.clearDisplayDown);
+
+      /// Enter
+      if (byte == 10) break;
+
+      /// Backspace
+      if (byte == 127) {
+        final s = title.toString();
+
+        if (s.isNotEmpty) {
+          title.clear();
+          title.write(s.substring(0, s.length - 1));
+        }
+
+        continue;
+      }
+
+      title.writeCharCode(byte);
+    }
+
+    if (title.isEmpty) {
       stdout.writeln(
         '${Ansi.cursorUp()}${Ansi.carriageReturn}${Ansi.clearEntireLine}'
         '$cancelSign $titleQuestion ',
@@ -150,6 +171,11 @@ class Main {
       io.stderr.writeln('[ERROR] Empty title!');
       io.exit(10);
     }
+
+    stdout.writeln('$okSign [${title.length}/$max] $titleQuestion $title');
+
+    stdin.lineMode = oldLineMode;
+    stdin.echoMode = oldEchoMode;
 
     /// Body
     stdout.write('$questionSign $bodyQuestion ');
@@ -164,7 +190,7 @@ class Main {
     }
 
     /// Run git commit command.
-    final exitCode = _commit(selected, title!, body);
+    final exitCode = _commit(selected, title.toString(), body);
 
     io.exit(exitCode);
   }
