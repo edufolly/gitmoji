@@ -47,15 +47,15 @@ jobs:
           - runner: ubuntu-latest
             target: linux-amd64
             ext: ""
-          - runner: ubuntu-24.04-arm
-            target: linux-arm64
-            ext: ""
+#          - runner: ubuntu-24.04-arm
+#            target: linux-arm64
+#            ext: ""
           - runner: macos-13
             target: macos-amd64
             ext: ""
-          - runner: macos-latest
-            target: macos-arm64
-            ext: ""
+#          - runner: macos-latest
+#            target: macos-arm64
+#            ext: ""
           - runner: windows-latest
             target: windows-amd64
             ext: ".exe"
