@@ -4,30 +4,71 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
-    name: Tests, Build & Deploy
+  prepare:
+    name: Prepare Release
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     permissions:
       contents: write
+    outputs:
+      VERSION: ${{ steps.get_version.outputs.VERSION }}
     steps:
       - name: Code Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Get Pubspec Version
+        id: get_version
         run: |
           VERSION=$(grep 'version:' pubspec.yaml | cut -c 10- | cut -f 1 -d '+')
-          sed -i "s/dev/$VERSION/g" bin/gitmoji.dart
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Check if version is used
         run: |
-          URL=$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/releases/tags/v${{ env.VERSION }}
+          URL=$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/releases/tags/v${{ steps.get_version.outputs.VERSION }}
           CODE=$(curl -s -H "Authorization: Bearer ${{ github.token }}" -o /dev/null -w "%{http_code}" "$URL")
           if [ "$CODE" != 404 ]; then
-            echo "Release '$VERSION' already exists. ($CODE)"
+            echo "Release 'v${{ steps.get_version.outputs.VERSION }}' already exists. ($CODE)"
             exit 1
           fi
+
+      - name: Creating a GitHub Tag
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          custom_tag: ${{ steps.get_version.outputs.VERSION }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    name: Build ${{ matrix.target }}
+    needs: prepare
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            target: linux-amd64
+            ext: ""
+          - runner: ubuntu-24.04-arm
+            target: linux-arm64
+            ext: ""
+          - runner: macos-13
+            target: macos-amd64
+            ext: ""
+          - runner: macos-latest
+            target: macos-arm64
+            ext: ""
+          - runner: windows-latest
+            target: windows-amd64
+            ext: ".exe"
+
+    steps:
+      - name: Code Checkout
+        uses: actions/checkout@v4
+
+      - name: Update Version in Code
+        shell: bash
+        # Utilizando perl ao invés de sed para garantir compatibilidade entre Linux e o BSD do macOS
+        run: |
+          perl -pi -e "s/dev/${{ needs.prepare.outputs.VERSION }}/g" bin/gitmoji.dart
 
       - name: Flutter Environment
         uses: subosito/flutter-action@v2
@@ -35,68 +76,40 @@ jobs:
           channel: 'stable'
           cache: false
 
-#      - name: Install lcov
-#        env:
-#          DEBIAN_FRONTEND: noninteractive
-#        run: |
-#          sudo apt-get update -y
-#          sudo apt install -y lcov
-#          mkdir -p build
-
       - name: Dart Pub Get
-        timeout-minutes: 3
         run: dart pub get
 
-#      - name: Dart Test
-#        run: |
-#          dart test \
-#          --coverage=coverage \
-#          --concurrency=$(grep -c processor /proc/cpuinfo)
-
       - name: Dart Compile
-        run: | 
+        shell: bash
+        run: |
           mkdir -p build
-          dart compile exe bin/gitmoji.dart -o build/gitmoji
+          dart compile exe bin/gitmoji.dart -o build/gitmoji-${{ matrix.target }}${{ matrix.ext }}
 
-#      - name: Creating package filter.
-#        run: dart run helpers/package.dart
-
-#      - name: Creating lcov.info
-#        run: |
-#          dart run coverage:format_coverage \
-#          --packages=coverage/package.json \
-#          --lcov \
-#          -i coverage \
-#          -o coverage/lcov.info
-
-#      - name: Creating Test Coverage HTML
-#        run: |
-#          genhtml coverage/lcov.info \
-#            --output-directory coverage/html/coverage \
-#            --title "check" \
-#            --show-details
-
-#      - name: Creating package filter.
-#        run: dart run helpers/create_index.dart README.md coverage/html/index.html
-
-#      - name: Publishing to GitHub Pages
-#        uses: peaceiris/actions-gh-pages@v4
-#        with:
-#          publish_dir: ./coverage/html
-#          github_token: ${{ secrets.GITHUB_TOKEN }}
-#          cname: check.testainers.com
-
-      - name: Creating a GitHub Tag
-        uses: mathieudutour/github-tag-action@v6.2
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
         with:
-          custom_tag: ${{ env.VERSION }}
-          tag_prefix: ''
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          name: gitmoji-${{ matrix.target }}
+          path: build/gitmoji-${{ matrix.target }}${{ matrix.ext }}
+          retention-days: 1
+
+  release:
+    name: Create GitHub Release
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
 
       - name: Create a GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          tag: ${{ env.VERSION }}
+          tag: v${{ needs.prepare.outputs.VERSION }}
           token: ${{ secrets.GITHUB_TOKEN }}
           allowUpdates: true
-          artifacts: build/*
+          artifacts: artifacts/*
+          generateReleaseNotes: true
