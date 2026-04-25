@@ -13,7 +13,7 @@ jobs:
       VERSION: ${{ steps.get_version.outputs.VERSION }}
     steps:
       - name: Code Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Get Pubspec Version
         id: get_version
@@ -50,19 +50,19 @@ jobs:
 #          - runner: ubuntu-24.04-arm
 #            target: linux-arm64
 #            ext: ""
-          - runner: macos-13
-            target: macos-amd64
+          - runner: macos-15-intel
+            target: macos-intel
             ext: ""
-#          - runner: macos-latest
-#            target: macos-arm64
-#            ext: ""
+          - runner: macos-15
+            target: macos-silicon
+            ext: ""
           - runner: windows-latest
             target: windows-amd64
             ext: ".exe"
 
     steps:
       - name: Code Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Update Version in Code
         shell: bash
@@ -86,7 +86,7 @@ jobs:
           dart compile exe bin/gitmoji.dart -o build/gitmoji-${{ matrix.target }}${{ matrix.ext }}
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gitmoji-${{ matrix.target }}
           path: build/gitmoji-${{ matrix.target }}${{ matrix.ext }}
@@ -100,7 +100,7 @@ jobs:
       contents: write
     steps:
       - name: Download All Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
