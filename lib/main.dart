@@ -156,39 +156,11 @@ class Main {
     /// Title
     final max = 50 - (commitWithEmoji ? 3 : selected.code.length + 1);
 
-    final title = StringBuffer();
-
-    while (true) {
-      stdout.write(
-        '$questionSign [${title.length}/$max] $titleQuestion $title',
-      );
-
-      final byte = stdin.readByteSync();
-
-      stdout.write(Ansi.carriageReturn + Ansi.clearDisplayDown);
-
-      /// Enter
-      if (byte == 10) {
-        stdout.writeln('$okSign [${title.length}/$max] $titleQuestion $title');
-        break;
-      }
-
-      // TODO: Implement left, right, home, end and delete.
-
-      /// Backspace
-      if (byte == 127) {
-        final s = title.toString();
-
-        if (s.isNotEmpty) {
-          title.clear();
-          title.write(s.substring(0, s.length - 1));
-        }
-
-        continue;
-      }
-
-      title.writeCharCode(byte);
-    }
+    String title = _prompt(
+      (buffer) =>
+          '$questionSign [${buffer.length.toString().padRight(2, '0')}/$max] '
+          '$titleQuestion $buffer',
+    );
 
     if (title.isEmpty) {
       stdout.writeln(
@@ -199,6 +171,8 @@ class Main {
       stderr.writeln('[ERROR] Empty title!');
       io.exit(10);
     }
+
+    stdout.writeln('$okSign [${title.length}/$max] $titleQuestion $title');
 
     stdin.lineMode = oldLineMode;
     stdin.echoMode = oldEchoMode;
@@ -255,5 +229,37 @@ class Main {
     }
 
     return exitCode;
+  }
+
+  String _prompt(String Function(StringBuffer buffer) messageBuilder) {
+    final buffer = StringBuffer();
+
+    while (true) {
+      stdout.write(messageBuilder(buffer));
+
+      final byte = stdin.readByteSync();
+
+      stdout.write(Ansi.carriageReturn + Ansi.clearDisplayDown);
+
+      if (byte == 10) break;
+
+      // TODO: Implement left, right, home, end and delete.
+
+      /// Backspace
+      if (byte == 127) {
+        final s = buffer.toString();
+
+        if (s.isNotEmpty) {
+          buffer.clear();
+          buffer.write(s.substring(0, s.length - 1));
+        }
+
+        continue;
+      }
+
+      buffer.writeCharCode(byte);
+    }
+
+    return buffer.toString();
   }
 }
