@@ -16,9 +16,9 @@ However, many existing tools require:
 
 This project solves that by providing:
 
-✅ A single binary  
-✅ Zero dependencies  
-✅ Instant execution  
+✅ A single binary
+✅ Zero dependencies
+✅ Instant execution
 ✅ Cross-platform support
 
 ## 📦 Installation
