@@ -1,6 +1,5 @@
 import 'dart:io' as io;
 
-import 'package:gitmoji/nullable_string_extension.dart';
 import 'package:gitmoji/position.dart';
 
 import 'ansi.dart';
@@ -50,157 +49,48 @@ class Main {
     stdin.lineMode = false;
     stdin.echoMode = false;
 
-    late Gitmoji selected;
-
     /// Emoji selection.
-    final search = StringBuffer();
-    int cursorIndex = 0;
     int index = 0;
+    List<Gitmoji> emojis = [];
 
-    while (true) {
-      final String text = search.toString();
+    _prompt(
+      (buffer) {
+        final String term = buffer.toString().toLowerCase();
 
-      // Start Message Builder
-      final List<Gitmoji> filtered = text.isEmpty
-          ? List.of(gitmojiList)
-          : gitmojiList
-                .where((gitmoji) => gitmoji.key.contains(text.toLowerCase()))
-                .toList();
+        final List<Gitmoji> filtered = term.isEmpty
+            ? List.of(gitmojiList)
+            : gitmojiList
+                  .where((gitmoji) => gitmoji.key.contains(term))
+                  .toList();
 
-      final List<Gitmoji> emojis = filtered.isEmpty
-          ? List.of(gitmojiList)
-          : filtered;
+        emojis = filtered.isEmpty ? List.of(gitmojiList) : filtered;
 
-      stdout.writeln();
+        stdout.writeln();
 
-      final List<int> lines = _window(index, lineCount, emojis.length);
+        final List<int> lines = _window(index, lineCount, emojis.length);
 
-      for (int i in lines) {
-        stdout.writeln('${i == index ? marker : emptyMarker} ${emojis[i]}');
-      }
-
-      stdout.write(Ansi.carriageReturn + Ansi.cursorUp(lines.length + 1));
-
-      stdout.write('$questionSign $gitmojiQuestion $search');
-      // End Message Builder
-
-      if (cursorIndex < text.length) {
-        stdout.write(Ansi.cursorBack(text.length - cursorIndex));
-      }
-
-      final byte = stdin.readByteSync();
-
-      stdout.write(Ansi.carriageReturn + Ansi.clearDisplayDown);
-
-      /// Enter
-      if (byte == 10) {
-        selected = emojis[index];
-        break;
-      }
-
-      /// Control Char ESC
-      if (byte == 27) {
-        if (stdin.readByteSync() != 91) continue;
-
-        final newByte = stdin.readByteSync();
-
-        switch (newByte) {
-          /// Insert
-          case 50:
-            if (stdin.readByteSync() == 126) {
-              // Ignore
-            }
-            break;
-
-          /// Delete
-          case 51:
-            if (stdin.readByteSync() == 126) {
-              if (cursorIndex < text.length) {
-                search.clear();
-                search.write(
-                  text.substring(0, cursorIndex) +
-                      text.substring(cursorIndex + 1),
-                );
-              }
-            }
-            break;
-
-          /// Page Up
-          case 53:
-            if (stdin.readByteSync() == 126) {
-              // Ignore
-            }
-            break;
-
-          /// Page Down
-          case 54:
-            if (stdin.readByteSync() == 126) {
-              // Ignore
-            }
-            break;
-
-          /// Arrow Up
-          case 65:
-            if (index > 0) index--;
-            break;
-
-          /// Arrow Down
-          case 66:
-            if (index < emojis.length - 1) index++;
-            break;
-
-          /// Right
-          case 67:
-            if (cursorIndex < text.length) cursorIndex++;
-            break;
-
-          /// Left
-          case 68:
-            if (cursorIndex > 0) cursorIndex--;
-            break;
-
-          /// End
-          case 70:
-            cursorIndex = text.length;
-            break;
-
-          /// Home
-          case 72:
-            cursorIndex = 0;
-            break;
-
-          /// Default
-          default:
-            stderr.writeln('Control Char: $newByte');
-            break;
+        for (int i in lines) {
+          stdout.writeln('${i == index ? marker : emptyMarker} ${emojis[i]}');
         }
 
-        continue;
-      }
+        stdout.write(Ansi.carriageReturn + Ansi.cursorUp(lines.length + 1));
 
-      index = 0;
+        return '$questionSign $gitmojiQuestion $buffer';
+      },
+      controlKeyMap: {
+        /// Up
+        65: (_, _) {
+          if (index > 0) index--;
+        },
 
-      /// Backspace
-      if (byte == 127) {
-        final s = search.toString();
-        if (s.isNotEmpty) {
-          search.clear();
-          search.write(
-            text.substring(0, cursorIndex - 1) + text.substring(cursorIndex),
-          );
-          cursorIndex--;
-        }
-        continue;
-      }
+        /// Down
+        66: (_, _) {
+          if (index < emojis.length - 1) index++;
+        },
+      },
+    );
 
-      search.clear();
-      search.write(
-        text.substring(0, cursorIndex) +
-            String.fromCharCode(byte) +
-            text.substring(cursorIndex),
-      );
-      cursorIndex++;
-    }
+    final Gitmoji selected = emojis[index];
 
     stdout.writeln('$okSign $gitmojiQuestion $selected');
 
@@ -228,30 +118,41 @@ class Main {
       );
 
       stderr.writeln('[ERROR] Empty title!');
+
+      _restoreStdin();
+
       io.exit(10);
     }
 
-    stdout.writeln('$okSign [${title.length}/$max] $titleQuestion $title');
+    final length = title.length.toString().padLeft(2, '0');
 
-    stdin.lineMode = oldLineMode;
-    stdin.echoMode = oldEchoMode;
+    stdout.writeln('$okSign [$length/$max] $titleQuestion $title');
 
     /// Body
-    stdout.write('$questionSign $bodyQuestion ');
+    final String body = _prompt(
+      (buffer) => '$questionSign $bodyQuestion $buffer',
+    );
 
-    final String? body = stdin.readLineSync()?.trim();
-
-    if (body.isNullOrEmpty) {
+    if (body.isEmpty) {
       stdout.writeln(
         '${Ansi.cursorUp()}${Ansi.carriageReturn}${Ansi.clearEntireLine}'
-        '${Ansi.bold}*${Ansi.reset} $bodyQuestion ',
+        '${Ansi.bold}-${Ansi.reset} $bodyQuestion ',
       );
     }
+
+    stdout.writeln('$okSign $bodyQuestion $body');
+
+    _restoreStdin();
 
     /// Run git commit command.
     final exitCode = _commit(selected, title.toString(), body);
 
     io.exit(exitCode);
+  }
+
+  void _restoreStdin() {
+    stdin.lineMode = oldLineMode;
+    stdin.echoMode = oldEchoMode;
   }
 
   List<int> _window(final int selected, final int lineCount, final int max) {
