@@ -140,7 +140,10 @@ class Main {
       );
     }
 
-    stdout.writeln('$okSign $bodyQuestion $body');
+    stdout.writeln(
+      '${Ansi.cursorUp()}${Ansi.carriageReturn}${Ansi.clearEntireLine}'
+      '$okSign $bodyQuestion $body',
+    );
 
     _restoreStdin();
 
