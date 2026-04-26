@@ -12,6 +12,7 @@ class Main {
   final String emptyMarker;
   final io.Stdout stdout = io.stdout;
   final io.Stdin stdin = io.stdin;
+  final io.Stdout stderr = io.stderr;
   final bool oldLineMode = io.stdin.lineMode;
   final bool oldEchoMode = io.stdin.echoMode;
   final String questionSign;
@@ -22,6 +23,7 @@ class Main {
   final String bodyQuestion;
   final bool commitWithAdd;
   final bool commitWithEmoji;
+  final String executable;
 
   Main(
     this.debug, {
@@ -35,17 +37,24 @@ class Main {
     this.cancelSign = '${Ansi.bold}${Ansi.red}X${Ansi.reset}',
     this.commitWithAdd = true,
     this.commitWithEmoji = true,
+    this.executable = 'git',
   }) : emptyMarker = ''.padRight(Ansi.strip(marker).length);
 
   void run(final List<Gitmoji> gitmojiList) {
-    late Gitmoji selected;
-    final search = StringBuffer();
-    int index = 0;
+    if (_executeCommand(["--version"]) != 0) {
+      stderr.writeln("$executable command nor found.");
+      io.exit(10);
+    }
 
     stdin.lineMode = false;
     stdin.echoMode = false;
 
+    late Gitmoji selected;
+
     /// Emoji selection.
+    final search = StringBuffer();
+    int index = 0;
+
     while (true) {
       final String term = search.toString().toLowerCase();
 
@@ -57,7 +66,21 @@ class Main {
           ? List.of(gitmojiList)
           : filtered;
 
-      final byte = _render(search, index, emojis);
+      stdout.writeln();
+
+      final List<int> lines = _window(index, lineCount, emojis.length);
+
+      for (int i in lines) {
+        stdout.writeln('${i == index ? marker : emptyMarker} ${emojis[i]}');
+      }
+
+      stdout.write(Ansi.carriageReturn + Ansi.cursorUp(lines.length + 1));
+
+      stdout.write('$questionSign $gitmojiQuestion $search');
+
+      final byte = stdin.readByteSync();
+
+      stdout.write(Ansi.carriageReturn + Ansi.clearDisplayDown);
 
       /// Enter
       if (byte == 10) {
@@ -107,7 +130,7 @@ class Main {
 
           /// Default
           default:
-            io.stderr.writeln('Control Char: $newByte');
+            stderr.writeln('Control Char: $newByte');
         }
 
         continue;
@@ -145,7 +168,10 @@ class Main {
       stdout.write(Ansi.carriageReturn + Ansi.clearDisplayDown);
 
       /// Enter
-      if (byte == 10) break;
+      if (byte == 10) {
+        stdout.writeln('$okSign [${title.length}/$max] $titleQuestion $title');
+        break;
+      }
 
       // TODO: Implement left, right, home, end and delete.
 
@@ -170,11 +196,9 @@ class Main {
         '$cancelSign $titleQuestion ',
       );
 
-      io.stderr.writeln('[ERROR] Empty title!');
+      stderr.writeln('[ERROR] Empty title!');
       io.exit(10);
     }
-
-    stdout.writeln('$okSign [${title.length}/$max] $titleQuestion $title');
 
     stdin.lineMode = oldLineMode;
     stdin.echoMode = oldEchoMode;
@@ -187,7 +211,7 @@ class Main {
     if (body.isNullOrEmpty) {
       stdout.writeln(
         '${Ansi.cursorUp()}${Ansi.carriageReturn}${Ansi.clearEntireLine}'
-        '$cancelSign $bodyQuestion ',
+        '${Ansi.bold}*${Ansi.reset} $bodyQuestion ',
       );
     }
 
@@ -195,30 +219,6 @@ class Main {
     final exitCode = _commit(selected, title.toString(), body);
 
     io.exit(exitCode);
-  }
-
-  int _render(
-    final StringBuffer search,
-    final int index,
-    final List<Gitmoji> emojis,
-  ) {
-    stdout.writeln();
-
-    final List<int> lines = _window(index, lineCount, emojis.length);
-
-    for (int i in lines) {
-      stdout.writeln('${i == index ? marker : emptyMarker} ${emojis[i]}');
-    }
-
-    stdout.write(Ansi.carriageReturn + Ansi.cursorUp(lines.length + 1));
-
-    stdout.write('$questionSign $gitmojiQuestion $search');
-
-    final byte = stdin.readByteSync();
-
-    stdout.write(Ansi.carriageReturn + Ansi.clearDisplayDown);
-
-    return byte;
   }
 
   List<int> _window(final int selected, final int lineCount, final int max) {
@@ -232,22 +232,26 @@ class Main {
   }
 
   int _commit(final Gitmoji gitmoji, final String title, final String? body) {
-    final parameters = [
+    final arguments = [
       'commit',
       if (commitWithAdd) '-a',
       '-m',
       '${commitWithEmoji ? gitmoji.emoji : gitmoji.code} $title',
     ];
 
-    if (body?.isNotEmpty ?? false) parameters.addAll(['-m', '$body']);
+    if (body?.isNotEmpty ?? false) arguments.addAll(['-m', '$body']);
 
-    final process = io.Process.runSync('git', parameters);
+    return _executeCommand(arguments);
+  }
+
+  int _executeCommand(final List<String> arguments) {
+    final process = io.Process.runSync(executable, arguments);
 
     final exitCode = process.exitCode;
 
     if (exitCode != 0) {
-      io.stderr.writeln(parameters.join(' '));
-      io.stderr.write(process.stderr);
+      stderr.writeln("$executable ${arguments.join(' ')}");
+      stderr.write(process.stderr);
     }
 
     return exitCode;
