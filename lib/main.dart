@@ -133,16 +133,12 @@ class Main {
       (buffer) => '$questionSign $bodyQuestion $buffer',
     );
 
-    if (body.isEmpty) {
-      stdout.writeln(
-        '${Ansi.cursorUp()}${Ansi.carriageReturn}${Ansi.clearEntireLine}'
-        '${Ansi.bold}-${Ansi.reset} $bodyQuestion ',
-      );
-    }
+    stdout.write(Ansi.cursorUp() + Ansi.carriageReturn + Ansi.clearEntireLine);
 
     stdout.writeln(
-      '${Ansi.cursorUp()}${Ansi.carriageReturn}${Ansi.clearEntireLine}'
-      '$okSign $bodyQuestion $body',
+      body.isEmpty
+          ? '${Ansi.bold}-${Ansi.reset} $bodyQuestion'
+          : '$okSign $bodyQuestion $body',
     );
 
     _restoreStdin();
