@@ -113,7 +113,7 @@ class Main {
 
     if (title.isEmpty) {
       stdout.writeln(
-        '${Ansi.cursorUp()}${Ansi.carriageReturn}${Ansi.clearEntireLine}'
+        '${Ansi.carriageReturn}${Ansi.clearEntireLine}'
         '$cancelSign $titleQuestion ',
       );
 
@@ -133,11 +133,11 @@ class Main {
       (buffer) => '$questionSign $bodyQuestion $buffer',
     );
 
-    stdout.write(Ansi.cursorUp() + Ansi.carriageReturn + Ansi.clearEntireLine);
+    stdout.write(Ansi.carriageReturn + Ansi.clearEntireLine);
 
     stdout.writeln(
       body.isEmpty
-          ? '${Ansi.bold}-${Ansi.reset} $bodyQuestion'
+          ? '${Ansi.bold}-${Ansi.reset} $bodyQuestion '
           : '$okSign $bodyQuestion $body',
     );
 
