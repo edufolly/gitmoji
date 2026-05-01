@@ -12,7 +12,6 @@ class Main {
   final String emptyMarker;
   final io.Stdout stdout = io.stdout;
   final io.Stdin stdin = io.stdin;
-  final io.Stdout stderr = io.stderr;
   final bool oldLineMode = io.stdin.lineMode;
   final bool oldEchoMode = io.stdin.echoMode;
   final String questionSign;
@@ -32,127 +31,127 @@ class Main {
     this.gitmojiQuestion = 'Choose a Gitmoji:',
     this.titleQuestion = 'Inform commit title:',
     this.bodyQuestion = 'Inform commit body (optional):',
-    this.questionSign = '${Ansi.bold}${Ansi.customYellow}?${Ansi.reset}',
-    this.okSign = '${Ansi.bold}${Ansi.green}*${Ansi.reset}',
-    this.cancelSign = '${Ansi.bold}${Ansi.red}X${Ansi.reset}',
+    // this.questionSign = '${Ansi.bold}${Ansi.customYellow}?${Ansi.reset}',
+    this.questionSign = '${Ansi.bold}${Ansi.customYellow}❔${Ansi.reset}',
+    // this.okSign = '${Ansi.bold}${Ansi.green}*${Ansi.reset}',
+    this.okSign = '${Ansi.bold}${Ansi.green}✅${Ansi.reset}',
+    // this.cancelSign = '${Ansi.bold}${Ansi.red}X${Ansi.reset}',
+    this.cancelSign = '${Ansi.bold}${Ansi.red}❌${Ansi.reset}',
     this.commitWithAdd = true,
     this.commitWithEmoji = true,
     this.executable = 'git',
   }) : emptyMarker = ''.padRight(Ansi.strip(marker).length);
 
   void run(final List<Gitmoji> gitmojiList) {
-    if (_executeCommand(["--version"]) != 0) {
-      stderr.writeln("$executable command nor found.");
-      io.exit(10);
-    }
+    int exitCode = 0;
 
-    stdin.lineMode = false;
-    stdin.echoMode = false;
+    try {
+      if (_executeCommand(["--version"]) != 0) {
+        throw Exception("$executable command not found.");
+      }
 
-    /// Emoji selection.
-    int index = 0;
-    List<Gitmoji> emojis = [];
+      stdin.lineMode = false;
+      stdin.echoMode = false;
 
-    _prompt(
-      (buffer) {
-        final String term = buffer.toString().toLowerCase();
+      /// Emoji selection.
+      int index = 0;
+      List<Gitmoji> emojis = [];
 
-        final List<Gitmoji> filtered = term.isEmpty
-            ? List.of(gitmojiList)
-            : gitmojiList
-                  .where((gitmoji) => gitmoji.key.contains(term))
-                  .toList();
+      _prompt(
+        (buffer) {
+          final String term = buffer.toString().toLowerCase();
 
-        emojis = filtered.isEmpty ? List.of(gitmojiList) : filtered;
+          final List<Gitmoji> filtered = term.isEmpty
+              ? List.of(gitmojiList)
+              : gitmojiList
+                    .where((gitmoji) => gitmoji.key.contains(term))
+                    .toList();
 
-        stdout.writeln();
+          emojis = filtered.isEmpty ? List.of(gitmojiList) : filtered;
 
-        final List<int> lines = _window(index, lineCount, emojis.length);
+          stdout.writeln();
 
-        for (int i in lines) {
-          stdout.writeln('${i == index ? marker : emptyMarker} ${emojis[i]}');
-        }
+          final List<int> lines = _window(index, lineCount, emojis.length);
 
-        stdout.write(Ansi.carriageReturn + Ansi.cursorUp(lines.length + 1));
+          for (int i in lines) {
+            stdout.writeln('${i == index ? marker : emptyMarker} ${emojis[i]}');
+          }
 
-        return '$questionSign $gitmojiQuestion $buffer';
-      },
-      controlKeyMap: {
-        /// Up
-        65: (_, _) {
-          if (index > 0) index--;
+          stdout.write(Ansi.carriageReturn + Ansi.cursorUp(lines.length + 1));
+
+          return '$questionSign $gitmojiQuestion $buffer';
         },
+        controlKeyMap: {
+          /// Up
+          65: (_, _) {
+            if (index > 0) index--;
+          },
 
-        /// Down
-        66: (_, _) {
-          if (index < emojis.length - 1) index++;
+          /// Down
+          66: (_, _) {
+            if (index < emojis.length - 1) index++;
+          },
         },
-      },
-    );
-
-    final Gitmoji selected = emojis[index];
-
-    stdout.writeln('$okSign $gitmojiQuestion $selected');
-
-    /// Title
-    final max = 50 - (commitWithEmoji ? 3 : selected.code.length + 1);
-
-    String title = _prompt((buffer) {
-      final message = StringBuffer("$questionSign [");
-
-      if (buffer.length > max) message.write(Ansi.bold + Ansi.red);
-
-      message.write(buffer.length.toString().padLeft(2, '0'));
-
-      if (buffer.length > max) message.write(Ansi.reset);
-
-      message.write("/$max] $titleQuestion $buffer");
-
-      return message.toString();
-    });
-
-    if (title.isEmpty) {
-      stdout.writeln(
-        '${Ansi.cursorUp()}${Ansi.carriageReturn}${Ansi.clearEntireLine}'
-        '$cancelSign $titleQuestion ',
       );
 
-      stderr.writeln('[ERROR] Empty title!');
+      final Gitmoji selected = emojis[index];
 
-      _restoreStdin();
+      stdout.writeln('$okSign $gitmojiQuestion $selected');
 
-      io.exit(10);
-    }
+      /// Title
+      final max = 50 - (commitWithEmoji ? 3 : selected.code.length + 1);
 
-    final length = title.length.toString().padLeft(2, '0');
+      String title = _prompt((buffer) {
+        final message = StringBuffer("$questionSign [");
 
-    stdout.writeln('$okSign [$length/$max] $titleQuestion $title');
+        if (buffer.length > max) message.write(Ansi.bold + Ansi.red);
 
-    /// Body
-    final String body = _prompt(
-      (buffer) => '$questionSign $bodyQuestion $buffer',
-    );
+        message.write(buffer.length.toString().padLeft(2, '0'));
 
-    if (body.isEmpty) {
-      stdout.writeln(
-        '${Ansi.cursorUp()}${Ansi.carriageReturn}${Ansi.clearEntireLine}'
-        '${Ansi.bold}-${Ansi.reset} $bodyQuestion ',
+        if (buffer.length > max) message.write(Ansi.reset);
+
+        message.write("/$max] $titleQuestion $buffer");
+
+        return message.toString();
+      });
+
+      if (title.isEmpty) {
+        stdout.writeln(
+          '${Ansi.carriageReturn}${Ansi.clearEntireLine}'
+          '$cancelSign $titleQuestion ',
+        );
+
+        throw Exception('[ERROR] Empty title!');
+      }
+
+      final length = title.length.toString().padLeft(2, '0');
+
+      stdout.writeln('$okSign [$length/$max] $titleQuestion $title');
+
+      /// Body
+      final String body = _prompt(
+        (buffer) => '$questionSign $bodyQuestion $buffer',
       );
+
+      stdout.write(Ansi.carriageReturn + Ansi.clearEntireLine);
+
+      stdout.writeln(
+        body.isEmpty
+            ? '${Ansi.bold}-${Ansi.reset} $bodyQuestion '
+            : '$okSign $bodyQuestion $body',
+      );
+
+      /// Run git commit command.
+      exitCode = _commit(selected, title.toString(), body);
+    } on Exception catch (e, s) {
+      io.stderr.writeln(e.toString());
+      if (debug) io.stderr.writeln(s.toString());
+    } finally {
+      stdin.lineMode = oldLineMode;
+      stdin.echoMode = oldEchoMode;
     }
-
-    stdout.writeln('$okSign $bodyQuestion $body');
-
-    _restoreStdin();
-
-    /// Run git commit command.
-    final exitCode = _commit(selected, title.toString(), body);
 
     io.exit(exitCode);
-  }
-
-  void _restoreStdin() {
-    stdin.lineMode = oldLineMode;
-    stdin.echoMode = oldEchoMode;
   }
 
   List<int> _window(final int selected, final int lineCount, final int max) {
@@ -184,8 +183,8 @@ class Main {
     final exitCode = process.exitCode;
 
     if (exitCode != 0) {
-      stderr.writeln("$executable ${arguments.join(' ')}");
-      stderr.write(process.stderr);
+      io.stderr.writeln("$executable ${arguments.join(' ')}");
+      io.stderr.write(process.stderr);
     }
 
     return exitCode;
@@ -275,7 +274,7 @@ class Main {
         if (controlMap.containsKey(newByte)) {
           controlMap[newByte]!.call(buffer, cursorIndex);
         } else {
-          stderr.writeln('Control Char: $newByte');
+          io.stderr.writeln('Control Char: $newByte');
         }
 
         continue;

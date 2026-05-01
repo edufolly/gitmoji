@@ -66,9 +66,7 @@ jobs:
 
       - name: Update Version in Code
         shell: bash
-        # Utilizando perl ao invés de sed para garantir compatibilidade entre Linux e o BSD do macOS
-        run: |
-          perl -pi -e "s/dev/${{ needs.prepare.outputs.VERSION }}/g" bin/gitmoji.dart
+        run: dart run tool/update_version.dart ${{ needs.prepare.outputs.VERSION }}
 
       - name: Flutter Environment
         uses: subosito/flutter-action@v2
@@ -108,7 +106,7 @@ jobs:
       - name: Create a GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          tag: v${{ needs.prepare.outputs.VERSION }}
+          tag: ${{ needs.prepare.outputs.VERSION }}
           token: ${{ secrets.GITHUB_TOKEN }}
           allowUpdates: true
           artifacts: artifacts/*

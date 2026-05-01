@@ -26,7 +26,7 @@ This project solves that by providing:
 Just download the binary for your operating system and make it executable.
 
 ```shell
-curl -sSLO https://github.com/edufolly/gitmoji/releases/latest/download/gitmoji && \
-chmod +x gitmoji && \
-sudo mv gitmoji /usr/local/bin
+curl -sSLO https://github.com/edufolly/gitmoji/releases/latest/download/gitmoji-linux-amd64 && \
+chmod +x gitmoji-linux-amd64 && \
+sudo mv gitmoji-linux-amd64 /usr/local/bin/gitmoji
 ```
