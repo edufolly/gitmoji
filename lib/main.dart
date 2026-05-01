@@ -142,7 +142,6 @@ class Main {
       exitCode = _commit(selected, title.toString(), body);
     } on Exception catch (e, s) {
       io.stderr.writeln(e.toString());
-
       if (debug) io.stderr.writeln(s.toString());
     } finally {
       stdin.lineMode = oldLineMode;
