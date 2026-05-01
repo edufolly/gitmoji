@@ -64,10 +64,6 @@ jobs:
       - name: Code Checkout
         uses: actions/checkout@v6
 
-      - name: Update Version in Code
-        shell: bash
-        run: dart run tools/update_version.dart ${{ needs.prepare.outputs.VERSION }}
-
       - name: Flutter Environment
         uses: subosito/flutter-action@v2
         with:
@@ -76,6 +72,10 @@ jobs:
 
       - name: Dart Pub Get
         run: dart pub get
+
+      - name: Update Version in Code
+        shell: bash
+        run: dart run tools/update_version.dart ${{ needs.prepare.outputs.VERSION }}
 
       - name: Dart Compile
         shell: bash
